@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+    <div id="app">
+        <p>
+            v-once内部会进行缓存，以后使用都是缓存里的结果
+        </p>
+        <div v-once>{{ msg }}</div>
+
+        <p>
+            v-html内部使用innerHTML，innerHTML有安全隐患，用户输入的内容不能使用这个，会造成XSS攻击
+        </p>
+        <div v-html="html"></div>
+
+        <p>
+            v-if和v-show的区别：v-if控制dom的有没有，v-show控制样式的显示和隐藏，并且v-show不支持无意义标签template，v-if支持
+        </p>
+        <template v-if="flag">v-if</template>
+        <div v-else>v-else</div>
+        <div v-show="!flag">v-show</div>
+    </div>
+    <script src="node_modules/vue/dist/vue.js"></script>
+    <script>
+    // 在vue中指令是带有v-前缀的特殊特性，主要功能是操作dom
+    /* 1.v-once只渲染一次数据，数据更新视图不变化
+         v-html把html标签渲染出来
+       2.v-if的属性值满足条件，则渲染dom节点；属性值不满足条件，dom会消失；可以和和v-else配合使用
+         v-show属性值真假为控制样式的显示与隐藏 
+    */
+    
+    let vm = new Vue({
+        el: '#app',
+        data: {
+            msg: 'hello',
+            html: '<h1>hello</h1>',
+            flag: true
+        }
+    })
+    </script>
+</body>
+</html>

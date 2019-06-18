@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+    <div id="app">
+        {{ a }} {{ b }}
+        <p>生命周期函数：</p>
+        <p>beforeCreate：初始化自己的生命周期，绑定原型对象上的事件，此时没有$data属性</p>
+        <p>created：可以获取数据和调用方法，不能获取this.$el，还没有挂载到节点上</p>
+        <p>beforeMount：渲染前</p>
+        <p>mounted：渲染后，可以获取this.$el，因为页面渲染完了，可以获取真实dom</p>
+        <p>beforeUpdate和updated：数据发生变化后触发，但是updated声明周期函数里面不能一般不能操作数据，会导致死循环</p>
+        <p>beforeDestroy和destoryed：销毁前和销毁后，销毁前当前实例还可以用，销毁后实例上的方法、监听都被移除掉</p>
+    </div>
+    <script src="node_modules/vue/dist/vue.js"></script>
+    
+    <script>
+    let vm = new Vue({
+        el: '#app',
+        data: {
+            a: 1,
+            b: 2
+        },
+        beforeCreate() {
+            console.log(this, this.$data) // this, undefined
+        },
+        created() {
+            console.log(this.$data, this.$el) // { msg: "hello" }  undefined
+        },
+        beforeMount() {
+            console.log('渲染前')
+        },
+        mounted() { // 获取真实dom，因为页面渲染完了
+            console.log('渲染后', this.$el)
+            this.a = 2 // 会触发beforeUpdate和updated声明周期函数
+            this.timer = setInterval(() => {
+
+            })
+        },
+        // 更新数据触发
+        beforeUpdate() {
+            console.log('更新前')
+            // this.b = 3
+        },
+        updated() { // 一般不能操作数据，会导致死循环
+            console.log('更新后')
+        },
+        beforeDestroy() {
+            // 当前实例还可以使用
+            clearInterval(this.timer)
+        },
+        destroyed() {
+            // 实例上的方法 监听都被移除掉
+        }
+    })
+    </script>
+</body>
+</html>

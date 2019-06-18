@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+    <div id="app">
+        <p>通过methods里面方法getFullName()计算结果，但是当其他无关数据发生变化，getFullName()也会重新渲染</p> 
+        {{ msg }} {{ getFullName() }}
+
+        <p>计算属性会避免上面无关数据变化，重新渲染问题，只有当计算属性中相关数据发生变化才会重新渲染</p>
+        {{ msg }} {{ fullName }}
+
+        <p>通过watch监听，实现和计算属性一样的效果</p>
+        {{ msg }} {{ fullNameWatch }}
+
+        <p>
+            总结：
+            computed和methods的区别是computed有缓存，而methods没有缓存
+            <br/>
+            computed和watch的区别是watch可以支持异步，比如说数据更新后几秒后才更新相应的数据操作，这时候只能用watch生效
+        </p>
+    </div>
+    <script src="node_modules/vue/dist/vue.js"></script>
+    
+    <script>
+    let vm = new Vue({
+        el: '#app',
+        data: {
+            firstName: '明',
+            lastName: '李',
+            fullNameWatch: '',
+            msg: 'hello'
+        },
+        methods: {
+            getFullName() {
+                console.log('methods render')
+                return this.firstName + this.lastName
+            },
+            watchFullName() {
+                console.log('watch render')
+                this.fullNameWatch = this.firstName + this.lastName
+            }
+        },
+        computed: { // computed内部使用Object.defineProperty来实现
+            fullName() { // 计算属性有get和set方法，会把值缓存，值如果没有更改会从缓存中取值
+                console.log('computed render')
+                return this.firstName + this.lastName
+            }
+        },
+        watch: {
+            firstName(newValue) {
+                this.watchFullName()
+            },
+            lastName() {
+                this.watchFullName()
+            }
+        },
+        mounted() {
+            this.watchFullName()
+        }
+    })
+    vm.msg = 'hello changed'
+    </script>
+</body>
+</html>

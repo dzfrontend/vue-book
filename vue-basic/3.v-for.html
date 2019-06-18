@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+    <div id="app">
+        <p>
+            1.v-for循环类似for in 遍历，vue2.5以上要求 循环时必须使用key属性
+        </p>
+        
+        <!-- 循环数组： -->
+        <div v-for="(fruit, index) in fruits" :key="index">
+            <span v-if="index % 2">{{ fruit }}</span>
+            <span v-else>{{ index }}</span>
+        </div>
+
+        <!-- 循环对象： -->
+        <div v-for="(value, key) in info">
+            {{ value }}
+        </div>
+
+        <p>
+            2.vue中的key可以用来区分元素：当vm.flag发生变化时，如果input不加key，vue会认为是一个input，两个input之间的数据会造成影响
+        </p>
+        <div v-if="flag">
+            <span>第1个input</span>
+            <input type="text" :key="1">
+        </div>
+        <div v-else>
+            <span>第2个input</span>
+            <input type="text" :key="2">
+        </div>
+    </div>
+    <script src="node_modules/vue/dist/vue.js"></script>
+    
+    <script>
+    let vm = new Vue({
+        el: '#app',
+        data: {
+            fruits: ['苹果', '香蕉', '车厘子', '西瓜'],
+            info: {
+                name: 'obj'
+            },
+            flag: true
+        }
+    })
+    </script>
+</body>
+</html>

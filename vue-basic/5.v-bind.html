@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+    <div id="app">
+        <p>
+            属性绑定： v-bind + 属性 或者 : + 属性
+            事件绑定： v-on + 事件名 或者 @ + 事件名
+        </p>
+        <p>
+            动态绑定样式
+        </p>
+        <div :class="{a: true}">class通过对象的形式动态绑定a样式</div>
+        <div :class="['a', 'b']">class通过数组的形式动态绑定a、b样式</div>
+        <div :style="{color: 'blue'}">style通过对象的形式动态绑定样式</div>
+        <div :style="[{background: 'blue', color: 'red'}]">style通过数组的形式动态绑定样式</div>
+    </div>
+    <script src="node_modules/vue/dist/vue.js"></script>
+    
+    <script>
+    let vm = new Vue({
+        el: '#app'
+    })
+    </script>
+</body>
+</html>

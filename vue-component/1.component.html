@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+
+<body>
+    <div id="app">
+        <p>组件化开发：将一个功能或模块抽离成一个组件，方便协作，维护和复用</p>
+        <p>vue组件定义的两种方式：全局组件和局部组件</p>
+
+        <p>全局global-button组件：</p>
+        <global-button></global-button>
+        <p>局部part-button组件：</p>
+        <part-button></part-button>
+
+    </div>
+    <script src="node_modules/vue/dist/vue.js"></script>
+    <script>
+        // Vue.component定义全局组件，组件名为大写或者小写，使用组件时候要写成小写global-button的形式
+        Vue.component('GlobalButton', {
+            template: '<button>{{ text }}</button>',
+            data() { // 组件里面的data是函数的形式而不是对象的形式，是为了每个组件的数据互不影响，因为对象是引用赋值
+                return {
+                    text: '全局按钮组件'
+                }
+            }
+        })
+        var vm = new Vue({
+            el: '#app',
+            // 局部组件
+            components: {
+                'PartButton': {
+                    template: '<button>{{ text }}</button>',
+                    data() {
+                        return {
+                            text: '局部按钮组件'
+                        }
+                    }
+                }
+            }
+        })
+
+    </script>
+</body>
+
+</html>

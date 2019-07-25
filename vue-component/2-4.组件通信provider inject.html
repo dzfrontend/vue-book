@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+
+<body>
+    <div id="app">
+        <p>组件通信之provider和inject</p>
+        <p>父组件中通过provider来提供变量，然后在子组件中通过inject来注入变量</p>
+        <my></my>
+    </div>
+    <script src="node_modules/vue/dist/vue.js"></script>
+    <script>
+        Vue.component('my', {
+            inject: ['a'], // inject注入provider里面的数据
+            template: '<div>{{a}}</div>'
+        })
+        var vm = new Vue({
+            el: '#app',
+            provider: { // 在根上提供一个属性，在所有的子组件上都可以获取
+                a: 1,
+            },
+        })
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+
+<body>
+    <div id="app">
+        <p>组件通信之props类型校验</p>
+        <!-- 通过v-bind绑定属性和直接写属性的区别是，v-bind是动态绑定的，比如:a="1" 取到props的类型是Number，而a="1"取到props的类型是String -->
+        <my-button :msg="content" :a="1"></my-button>
+    </div>
+    <script src="node_modules/vue/dist/vue.js"></script>
+    <script>
+
+        var vm = new Vue({
+            el: '#app',
+            data: {
+                content: '点我'
+            },
+            components: {
+                'MyButton': {
+                    props: {
+                        // props类型校验
+                        msg: {
+                            type: String, // msg传值类型
+                            default: '按钮' // 不传msg props的默认值
+                        },
+                        a: {
+                            type: Number,
+                            validator(value) { // 校验器，自定义校验规则
+                                return value > 0
+                            }
+                        },
+                        b: {
+                            type: Object,
+                            default: () => ({ data: 2 }) // 属性校验中，如果是数组或对象，需要将默认值用返回的形式
+                        }
+                    },
+                    template: '<button>{{ msg }} {{ a }} {{ b.data }}</button>'
+                }
+            }
+        })
+
+    </script>
+</body>
+
+</html>

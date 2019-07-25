@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+
+<body>
+    <div id="app">
+        <p>组件通信之兄弟组件通信</p>
+        <p>兄弟组件(平级组件)通信：在子组件中通过$parent调用父级的事件函数，在父级的事件函数里面，又可以通过$children来获取所有子组件，在父级事件函数里面获取子组件数据进行操作，就达到了兄弟组件通信的目的。</p>
+        <p>$parent获取父组件的实例，并且可以获取父组件的事件函数</p>
+        <p>$children获取所有子组件，并且可以操作子组件数据</p>
+        <p>手风琴效果:</p>
+        <collapse>
+            <collapse-item title="react">内容1</collapse-item>
+            <collapse-item title="vue">内容2</collapse-item>
+            <collapse-item title="angular">内容3</collapse-item>
+        </collapse>
+    </div>
+    <style>
+        .title{ width: 100px; line-height: 30px; border: 1px solid green; text-align: center;}
+    </style>
+    <script src="node_modules/vue/dist/vue.js"></script>
+    <script>
+
+        Vue.component('Collapse', {
+            // slot插槽表示子组件，类似于react中的this.props.children
+            template: `<div class="collapse">
+                <slot></slot>
+            </div>`,
+            methods: {
+                oparate(childId) {
+                    this.$children.forEach(child => {
+                        // 关掉其他的兄弟节点
+                        if(child._uid !== childId) {
+                            child.show = false;
+                        }
+                    })
+                }
+            },
+        })
+        
+        Vue.component('CollapseItem', {
+            props: ['title'],
+            data() {
+                return {
+                    show: false
+                }
+            },
+            template: `<div>
+                <div class="title" @click="change">{{ title }}</div>
+                <div class="content" v-show="show">
+                    <slot></slot>
+                </div>
+            </div>`,
+            methods: {
+                change() {
+                    this.show = !this.show;
+                    // this.$parent获取父级的事件函数；_uid为组件的标识（vue内置），传入父级进行子组件的标识
+                    this.$parent.oparate(this._uid); 
+                }
+            },
+        })
+        var vm = new Vue({
+            el: '#app',
+        })
+    </script>
+</body>
+
+</html>

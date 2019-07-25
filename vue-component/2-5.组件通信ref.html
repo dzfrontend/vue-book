@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+
+<body>
+    <div id="app">
+        <p>组件通信之ref</p>
+        <p>1.ref不能给多个元素设置相同的ref，只能识别一个</p>
+        <p>2.ref如果放到循环里，就是多个元素，数组的形式而不是单个</p>
+        <template v-for="i in 3">
+            <div ref="refFor">循环ref</div>
+        </template>
+        <p>3.ref加在组件上，则可以获取组件的实例，并且可以调用组件实例上的方法（可以在父级上通过ref获取子组件的方法），一些库通过这种方式暴露方法</p>
+        <ref-component ref="refMethod"></ref-component>
+    </div>
+    <script src="node_modules/vue/dist/vue.js"></script>
+    <script>
+        
+        var vm = new Vue({
+            el: '#app',
+            mounted() {
+                console.log(this.$refs.refFor); // 输出结果为数组的形式
+                this.$refs.refMethod.show(); // 可以在父级上通过ref获取子组件的方法
+            },
+            components: {
+                'refComponent': {
+                    methods: {
+                        show() {
+                            console.log('show');
+                        }
+                    },
+                    template: '<div>ref component调用子组件方法</div>'
+                }
+            }
+        })
+    </script>
+</body>
+
+</html>

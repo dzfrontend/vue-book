@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+
+<body>
+    <div id="app">
+        <p>自定义指令：实现输入框输入的内容长度不能大于指定的指令修饰符的值</p>
+        <p>自定义指令v-split写成对象形式，实现输入框长度不超过5</p>
+        <p>自定义指令还可以写成bind + update的对象形式，所以自定义指令默认函数形式 = bind + update的对象形式</p>
+        <input type="text" v-model="msg" v-split.5="msg" />
+    </div>
+    <script src="node_modules/vue/dist/vue.js"></script>
+    <script>
+        // 自定义全局指令v-split写成对象形式
+        Vue.directive('split', {
+            bind(el, bindings, vnode) { // 只在绑定的时候生效
+                let ctx = vnode.context;
+                let len = Object.keys(bindings.modifiers); // 获取修饰符值
+                ctx[bindings.expression] =  el.value.slice(0, len); // ctx[bindings.expression]为当前上下文中指令的值，需要重新赋值为处理后的值
+            },
+            update(el, bindings, vnode) { // 数据更新时生效
+                let ctx = vnode.context;
+                let len = Object.keys(bindings.modifiers);
+                ctx[bindings.expression] =  el.value.slice(0, len);
+            }
+        })
+        var vm = new Vue({
+            el: '#app',
+            data: {
+                msg: '5个长度值'
+            }
+        })
+    </script>
+</body>
+
+</html>

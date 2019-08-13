@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+
+<body>
+    <div id="app">
+        <p>自定义指令：实现输入框输入的内容长度不能大于指定的指令修饰符的值</p>
+        <p>自定义指令实现双向绑定并且限制输入长度</p>
+        <input type="text" v-split.5="msg" />
+        {{msg}}
+    </div>
+    <script src="node_modules/vue/dist/vue.js"></script>
+    <script>
+        Vue.directive('split', {
+            bind(el, bindings, vnode) { // 只在绑定的时候生效
+                let ctx = vnode.context;
+                let len = Object.keys(bindings.modifiers); // 获取修饰符值
+                // 双向绑定
+                el.addEventListener('input', (e) => {
+                    let val = e.target.value.slice(0, len);
+                    ctx[bindings.expression] = val; // ctx[bindings.expression]为当前上下文中指令的值
+                    el.value = val;
+                });
+                // 赋予默认值
+                el.value = ctx[bindings.expression].slice(0, len);
+            },
+            update(el, bindings, vnode) {
+                let ctx = vnode.context;
+                let len = Object.keys(bindings.modifiers);
+                el.value = ctx[bindings.expression].slice(0, len);
+            },
+        })
+        var vm = new Vue({
+            el: '#app',
+            data: {
+                msg: '5个长度值'
+            }
+        })
+    </script>
+</body>
+
+</html>

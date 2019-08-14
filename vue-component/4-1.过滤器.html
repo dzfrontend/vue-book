@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+
+<body>
+    <div id="app">
+        过滤器：只改变数据的展现形式，不改变原来数据。和计算属性computed相似，但不同的是computed无法提取为公共的，而过滤器可以实现复用。
+        <br/>
+        computed过滤数据：
+        {{ newName }}
+        <br/>
+        filter过滤数据：
+        {{ name | capitalize(2) }}
+    </div>
+    <script src="node_modules/vue/dist/vue.js"></script>
+    <script>
+        // 过滤器也分为全局和局部过滤器
+        // 过滤器capitalize：实现传入字母大写的个数来实现数据的转换过滤
+        Vue.filter('capitalize', function(value, len) {
+            // 过滤器filter里面this指向window，所以不能使用this.name
+            return value.slice(0, len).toUpperCase() + value.slice(len)
+        })
+        var vm = new Vue({
+            el: '#app',
+            data: {
+                name: 'xiaoming'
+            },
+            computed: {
+                newName() { // 首字母大写
+                    return this.name.slice(0, 1).toUpperCase() + this.name.slice(1)
+                }
+            },
+            // 局部过滤器
+            filters: {
+
+            }
+        })
+    </script>
+</body>
+
+</html>

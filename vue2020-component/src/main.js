@@ -1,6 +1,7 @@
 import Vue from 'vue'
 import App from './App.vue'
 import './plugins/element.js'
+import noticePlugin from '@/plugins/noticePlugin';
 
 Vue.config.productionTip = false
 // 事件总线
@@ -23,6 +24,8 @@ class Bus {
 }
 
 Vue.prototype.$bus = new Bus()
+
+Vue.use(noticePlugin)
 
 new Vue({
   render: h => h(App),

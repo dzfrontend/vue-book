@@ -19,8 +19,8 @@
 import KInput from "@/components/form/KInput.vue";
 import KFormItem from "@/components/form/KFormItem.vue";
 import KForm from "@/components/form/KForm.vue";
-import create from '@/utils/create'
-import Notice from '@/components/Notice.vue';
+import create from '@/utils/create';
+import Notice from '@/components/notice/Notice.vue';
 
 export default {
   components: {
@@ -44,11 +44,14 @@ export default {
     login() {
       this.$refs.loginForm.validate(valid => {
         if (valid) {
-          create(Notice, {
-            title: '提示',
-            message: 'success submit',
-            duration: 3000
-          }).show()
+          // create(Notice, {
+          //   title: '提示',
+          //   message: 'success submit',
+          //   duration: 3000
+          // }).show()
+
+          // 改用插件的调用形式
+          this.$notice({ title: '提示', message: 'success submit', duration: 3000 });
         } else {
           create(Notice, {
             title: '提示',

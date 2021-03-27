@@ -9,7 +9,16 @@
 <body>
   <script src="dist/umd/vue.js"></script>
   <script>
-    console.log(Vue);
+    // console.log(Vue);
+    const vm = new Vue({
+      el: '#app',
+      data() {
+        return {
+          a: '响应式数据原理'
+        }
+      }
+    });
+    // console.log(vm.$options);
   </script>
 </body>
 </html>

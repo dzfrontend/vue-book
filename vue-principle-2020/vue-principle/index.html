@@ -13,12 +13,11 @@
     const vm = new Vue({
       el: '#app',
       data() {
-        return {
-          a: '响应式数据原理'
-        }
+        return { a: { b: 1 } };
       }
     });
     // console.log(vm.$options);
+    console.log(vm._data);
   </script>
 </body>
 </html>

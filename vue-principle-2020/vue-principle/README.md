@@ -2,11 +2,11 @@
 
 ## 一.使用Rollup搭建开发环境
 
-#### 1.1 什么是Rollup?
+### 1.1 什么是Rollup?
 
 Rollup是一个js模块打包器，可以将小块代码编译成大块复杂的代码，rollup.js更专注于js类库打包(开发应用时使用webpack，开发库是使用rollup)。
 
-#### 1.2 环境搭建
+### 1.2 环境搭建
 
 安装的npm包有:
 
@@ -104,7 +104,7 @@ index.html:
 
 # 二.Vue响应式原理
 
-#### 2.1 初始化状态时进行数据初始化劫持
+### 2.1 初始化状态时进行数据初始化劫持
 
 在Vue中，我们都知道Vue的数据响应式：当数据发生变化，视图就会更新；所以在初始化状态的时候，需要将数据做一个初始化劫持；所谓的数据劫持，也就是当改变数据的时候应该更新视图。
 
@@ -174,6 +174,8 @@ const initData = (vm) => {
   let data = vm.$options.data;
   // data可以是函数、对象，下面处理后得到对象
   data = typeof data === 'function' ? data.call(vm) : data;
+  // 将data放到实例vm上外部可以通过vm._data访问到数据
+  vm._data = data;
   observe(data);
 }
 ```
@@ -192,9 +194,94 @@ export function observe(data) {
 {a: "响应式数据原理"}
 ```
 
-<b>数据劫持：</b>
+### 2.2 递归对象属性劫持
 
+数据的劫持方案有两种： 
+1.对象通过Object.defineProperty劫持数据更新； 
+2.数组需单独处理
 
+先来实现对象属性的劫持：
+
+扩展observe方法：(src/observer/index.js)
+
+```js
+export function observe(data) {
+  // 必须是对象才进行劫持
+  if (typeof data !== 'object' || data === null) {
+    return;
+  }
+
+  // 观测对象
+  return new Observer(data);
+}
+```
+
+创建一个Observer类重新定义对象的属性(src/observer/index.js)
+
+```js
+class Observer {
+  constructor(value) {
+    // console.log(value);
+    // 使用defineProperty重新定义对象的属性
+    this.walk(value);
+  }
+  walk(data) {
+    let keys = Object.keys(data); // 拿到对象的浅拷贝层的key
+    keys.forEach(key => {
+      // 把key重新定义到data上面成为响应式数据
+      defineReactive(data, key, data[key]);
+    });
+  }
+}
+const defineReactive = (data, key, value) => {
+  Object.defineProperty(data, key, {
+    get() {
+      return value;
+    },
+    set(newValue) {
+      if (newValue !== value) return;
+      value = newValue;
+    }
+  })
+}
+```
+
+创建一个data为深拷贝的对象的vue实例：(index.html)
+
+```js
+<script>
+  const vm = new Vue({
+    el: '#app',
+    data() {
+      return { a: { b: 1 } };
+    }
+  });
+  console.log(vm._data);
+</script>
+```
+
+打开http://localhost:3000查看浏览器输出结果：
+
+![avatar](images/object1.png)
+
+发现{ a: { b: 1 } }这个对象浅拷贝的一层被重新定义上了get和set方法，标志着成功数据劫持，但深一层的对象{ b: 1 }并没有被劫持；所以需要递归劫持深拷贝层的对象属性。
+
+在defineReactive里面递归劫持深拷贝层的属性：
+
+```
+const defineReactive = (data, key, value) => {
+  observe(value); // value有可能是对象，如果是对象就递归遍历深拷贝层的key属性进行重新定义
+  ...
+}
+```
+
+查看结果，发现{b: 1}层对象也被重新定义上了get和set方法，说明b属性已经被劫持。
+
+![avatar](images/object2.png)
+
+### 2.3 数组方法劫持
+
+### 2.4 数据代理
 
 
 

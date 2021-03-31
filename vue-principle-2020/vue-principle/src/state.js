@@ -32,6 +32,8 @@ const initData = (vm) => {
   let data = vm.$options.data;
   // data可以是函数、对象，下面处理后得到对象
   data = typeof data === 'function' ? data.call(vm) : data;
+  // 将data放到实例vm上外部可以通过vm._data访问到数据
+  vm._data = data;
   /**
    * 数据的劫持方案：
    * 1.对象 Object.defineProperty

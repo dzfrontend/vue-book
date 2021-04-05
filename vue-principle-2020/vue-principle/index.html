@@ -13,11 +13,18 @@
     const vm = new Vue({
       el: '#app',
       data() {
-        return { a: { b: 1 } };
+        return { 
+          // a: { b: 1 }, // 深拷贝对象
+          // arr: [1, 2, 3], // 数组
+          arrObj: [ { a: 1 } ], // 数组元素为对象
+        };
       }
     });
     // console.log(vm.$options);
     console.log(vm._data);
+    // vm._data.arr.push(4);
+    // vm._data.arrObj[0].a = 2;
+    vm._data.arrObj.push({ b: 2 });
   </script>
 </body>
 </html>

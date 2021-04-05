@@ -1,11 +1,28 @@
+import { arrayMethods } from "./array";
+
 /**
  * 数据响应式原理处理
  */
 class Observer {
   constructor(value) {
     // console.log(value);
-    // 使用defineProperty重新定义对象的属性
-    this.walk(value);
+
+    // defineProperty重新定义一个__ob__属性，值为Observer实例
+    Object.defineProperty(value, '__ob__', {
+      enumerable: false, // 不可枚举，也就是不能够被遍历到，为隐藏属性
+      configurable: false, // 不可删除
+      value: this // this为Observer实例
+    });
+
+    if (Array.isArray(value)) {
+      // 数据的value为数组，通过重写的数组方法劫持数据
+      value.__proto__ = arrayMethods;
+      // 观测数组对象
+      this.observeArray(value);
+    } else {
+      // 使用defineProperty重新定义对象的属性
+      this.walk(value);
+    }
   }
   // 一步步
   walk(data) {
@@ -14,6 +31,12 @@ class Observer {
       // 把key重新定义到data上面成为响应式数据
       defineReactive(data, key, data[key]);
     });
+  }
+  observeArray(value) {
+    value.forEach(item => {
+      // 劫持数组对象的每一项
+      observe(item);
+    })
   }
 }
 
@@ -35,9 +58,13 @@ const defineReactive = (data, key, value) => {
 export function observe(data) {
   // 必须是对象才进行劫持
   if (typeof data !== 'object' || data === null) {
-    return;
+    return data;
   }
 
+  // 有__ob__自定义属性，说明已经被观测过，不需要再观测
+  if (data.__ob__) {
+    return data;
+  }
   // 观测对象
   return new Observer(data);
 }

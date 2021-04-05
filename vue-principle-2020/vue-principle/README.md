@@ -279,14 +279,175 @@ const defineReactive = (data, key, value) => {
 
 ![avatar](images/object2.png)
 
-### 2.3 数组方法劫持
+### 2.3 重写数组方法劫持
+
+在vue的实例中定义数组数据：
+
+```js
+data() {
+  return { 
+    arr: [1, 2, 3], // 数组
+  };
+}
+```
+打印出`vm._data`，按照对象劫持的方式，可以查看数组arr的每一个元素都被劫持了；
+
+![avatar](images/arr1.png)
+
+当我们改变数组第一个元素时，却只能`vm._data.arr[0] = 0`这样改变，通过数组arr的索引去改变元素的值才能被vue响应式数据监听，这样不符合操作习惯，开发中很少对数组索引操作；而且当数组的元素多了起来，每一个数组元素都需要get和set去劫持，明显越来越损耗性能了。
+
+在vue中，为了性能考虑不对数组进行Object.defineProperty拦截，vue中通过拦截可以改变数组的方法进行数据劫持，所以下面重写数组方法。
+
+##### 数组元素劫持
+
+在Observer类的构造函数里接收的value可以为数组，判断value为数组的情况下，在数组数据原型上扩展数组劫持方法。(src/observer/index.js)
+
+```js
+import { arrayMethods } from "./array";
+class Observer {
+  constructor(value) {
+    if (Array.isArray(value)) {
+      // 数据的value为数组，通过重写的数组方法劫持数据
+      value.__proto__ = arrayMethods;
+    } else {
+      // 使用defineProperty重新定义对象的属性
+      this.walk(value);
+    }
+  }
+}
+```
+新建src/observer/array.js，重写数组的部分方法进行劫持数组数据。
+
+```js
+// 继承原生数组Array的原有方法
+export let arrayMethods = Object.create(Array.prototype);
+
+// 需扩展重写的方法
+let methods = ['push', 'shift', 'unshift', 'splice', 'sort', 'reverse', 'pop'];
+
+methods.forEach(method => {
+  arrayMethods[method] = function() {
+    console.log(`数组重写方法${method}被调用`);
+    const result = Array.prototype[method].apply(this, arguments);
+    return result;
+  }
+})
+```
+
+这样就实现了value为数组情况下，value实例原型上扩展重写了`'push', 'shift', 'unshift', 'splice', 'sort', 'reverse', 'pop'`这7个数组劫持方法，当通过这7个方法改变value值时，会被劫持到调用，这样就可以做更新视图的操作了。
+
+比如通过`vm._data.arr.push(4)`改变数组数据，控制台会监听打印结果如下。
+
+```
+// 控制台输出
+数组重写方法push被调用
+```
+
+通过输出`console.log(vm._data)`查看数据的结构如下。
+
+![avatar](images/arr2.png)
+
+可以看到数据`arr`的原型上有重写的7个数组方法；如果我们想用其他数组方法如concat的时候，也是可以用的，这是因为顺着原型链找到了原生数组的方法，在array.js中`Object.create(Array.prototype)`继承了原生数组的方法，形成了原型链。
+
+但是也因为concat方法没有被重写，当通过`vm._data.arr.concat([4])`改变arr数据时，劫持不到arr数据发生变化。
+
+##### 数组对象劫持
+
+数据为数组单一元素时，可以通过重写的数组方法来劫持数组元素的变化。当数组中元素不再是单一的元素而是对象的时候，改变数组对象时，这时就不能观测到变化。
+
+```js
+const vm = new Vue({
+  el: '#app',
+  data() {
+    return { 
+      arrObj: [ { a: 1 } ], // 数组元素为对象
+    };
+  }
+});
+// 改变数组对象时，无法观测到数据变化
+vm._data.arrObj[0].a = 2;
+```
+
+处理数组中对象的劫持，将数组中对象的每一项劫持。(src/observe/index.js)
+
+```js
+class Observer {
+  constructor(value) {
+    if (Array.isArray(value)) {
+      value.__proto__ = arrayMethods;
+      // 观测数组对象
+      this.observeArray(value);
+    }
+    ...
+  }
+  observeArray(value) {
+    value.forEach(item => {
+      // 将数组对象的每一项劫持
+      observe(item);
+    })
+  }
+}
+```
+
+当value是数组对象时，observeArray方法将数组的对象的每一项劫持观测。
+
+![avatar](images/arr3.png)
+
+上面打印`vm._data`，数组对象加上了get和set，`vm._data.arrObj[0].a = 2`改变数组对象时，就可以监听到数据的变化了。
+
+同理，当对数组arrObj进行push一个对象的时候，新加的数组对象没有进行劫持操作。应该在数组重写方法里面，对数组对象做拦截劫持。
+
+```js
+methods.forEach(method => {
+  arrayMethods[method] = function(...args) {
+    console.log(`数组重写方法${method}被调用`);
+    const result = Array.prototype[method].apply(this, args);
+
+    let obData; // 数组中追加/粘接的对象
+    switch (method) {
+      case 'push':
+        obData = args;
+        break;
+      case 'unshift':
+        obData = args;
+        break;
+      case 'splice': // vue.$set原理
+        obData = args.slice(2);
+      default:
+        break;
+    }
+    
+    if (obData) this.__ob__.observeArray(obData);
+
+    return result;
+  }
+})
+
+```
+在重写的数组方法中，push和unshift追加的数据，splice粘接的数据可能是对象，调用observeArray劫持数组中的对象。(src/observer/array.js)
+
+`this.__ob__.observeArray`为Observer类原型上的方法，需要在Observer里挂载到实例的`__ob__`属性上。
+
+```js
+class Observer {
+  constructor(value) {
+    // defineProperty重新定义一个__ob__属性，值为Observer实例
+    Object.defineProperty(value, '__ob__', {
+      enumerable: false, // 不可枚举，也就是不能够被遍历到，为隐藏属性
+      configurable: false, // 不可删除
+      value: this // this为Observer实例
+    });
+    ...
+  }
+}
+```
+
+在数据上挂载了__ob__的属性，`enumerable: false`配置为不可枚举，隐藏属性避免value为对象而defineReactive陷入死循环。`this.__ob__.observeArray`数组重写方法里就可以直接用调用了。(src/observer/index.js)
+
+用`vm._data.arrObj.push({ b: 2 })`向arrObj数组里push一个对象，查看`vm._data`的打印结果。
+
+![avatar](images/arr4.png)
+
+结果显示新push的对象已经被劫持了，当改变其值也就会被监听到。
 
 ### 2.4 数据代理
-
-
-
-
-
-
-
-

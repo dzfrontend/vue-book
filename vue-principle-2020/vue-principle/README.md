@@ -262,7 +262,7 @@ const defineReactive = (data, key, value) => {
 
 打开http://localhost:3000查看浏览器输出结果：
 
-![avatar](images/object1.png)
+![object1](https://user-images.githubusercontent.com/20060839/114256986-6ffcbd00-99ef-11eb-9c7f-e14168b45df3.png)
 
 发现{ a: { b: 1 } }这个对象浅拷贝的一层被重新定义上了get和set方法，标志着成功数据劫持，但深一层的对象{ b: 1 }并没有被劫持；所以需要递归劫持深拷贝层的对象属性。
 
@@ -277,7 +277,7 @@ const defineReactive = (data, key, value) => {
 
 查看结果，发现{b: 1}层对象也被重新定义上了get和set方法，说明b属性已经被劫持。
 
-![avatar](images/object2.png)
+![object2](https://user-images.githubusercontent.com/20060839/114257004-87d44100-99ef-11eb-8924-46ce72edb9b4.png)
 
 ### 2.3 重写数组方法劫持
 
@@ -292,7 +292,8 @@ data() {
 ```
 打印出`vm._data`，按照对象劫持的方式，可以查看数组arr的每一个元素都被劫持了；
 
-![avatar](images/arr1.png)
+![arr1](https://user-images.githubusercontent.com/20060839/114256929-3af06a80-99ef-11eb-988f-a9ac6faafbc1.png)
+
 
 当我们改变数组第一个元素时，却只能`vm._data.arr[0] = 0`这样改变，通过数组arr的索引去改变元素的值才能被vue响应式数据监听，这样不符合操作习惯，开发中很少对数组索引操作；而且当数组的元素多了起来，每一个数组元素都需要get和set去劫持，明显越来越损耗性能了。
 
@@ -345,7 +346,7 @@ methods.forEach(method => {
 
 通过输出`console.log(vm._data)`查看数据的结构如下。
 
-![avatar](images/arr2.png)
+![arr2](https://user-images.githubusercontent.com/20060839/114257031-b3efc200-99ef-11eb-8d9f-24c2037c0bb3.png)
 
 可以看到数据`arr`的原型上有重写的7个数组方法；如果我们想用其他数组方法如concat的时候，也是可以用的，这是因为顺着原型链找到了原生数组的方法，在array.js中`Object.create(Array.prototype)`继承了原生数组的方法，形成了原型链。
 
@@ -391,7 +392,7 @@ class Observer {
 
 当value是数组对象时，observeArray方法将数组的对象的每一项劫持观测。
 
-![avatar](images/arr3.png)
+![arr3](https://user-images.githubusercontent.com/20060839/114257045-c5d16500-99ef-11eb-8295-23725d5936a2.png)
 
 上面打印`vm._data`，数组对象加上了get和set，`vm._data.arrObj[0].a = 2`改变数组对象时，就可以监听到数据的变化了。
 
@@ -446,8 +447,56 @@ class Observer {
 
 用`vm._data.arrObj.push({ b: 2 })`向arrObj数组里push一个对象，查看`vm._data`的打印结果。
 
-![avatar](images/arr4.png)
+![arr4](https://user-images.githubusercontent.com/20060839/114257057-dbdf2580-99ef-11eb-866e-120da7486797.png)
 
 结果显示新push的对象已经被劫持了，当改变其值也就会被监听到。
 
 ### 2.4 数据代理
+
+使用数据的时候，当前只能通过`vm._data.arrObj`取到实例中的数据，如何直接变成vm.arrObj的形式方便操作数据呢？这里就需要用到数据代理，当在vm上取属性时，将属性的取值代理到vm._data上。
+
+在数据的初始化initData函数中，对数据进行代理。(src/state.js)
+
+```js
+const initData = (vm) => {
+  let data = vm.$options.data;
+  // data可以是函数、对象，下面处理后得到对象
+  data = typeof data === 'function' ? data.call(vm) : data;
+  // 将data放到实例vm上外部可以通过vm._data访问到数据
+  vm._data = data;
+
+  // 数据代理
+  for (let key in data) {
+    // 当通过vm.key取值时，就去vm._data.key上取值
+    proxy(vm, '_data', key);
+  }
+  ...
+}
+```
+
+遍历data的每一个key，当通过vm.key取值时，就去vm._data.key上取值，这样就实现了数据代理。那怎样实现数据代理呢？还是用Object.defineProperty来重新定义key。
+
+写一个proxy函数如下：
+
+```js
+const proxy = (vm, data, key) => {
+  Object.defineProperty(vm, key, {
+    get() {
+      return vm[data][key];
+    },
+    set(newValue) {
+      vm[data].key = newValue;
+    }
+  });
+}
+```
+
+使用Object.defineProperty重新定义了数据data中的key后，通过vm.key取值实际上是从vm._data.key取值；通过vm.key设值，也是设置到vm._data.key上了，这样就实现数据代理。
+
+数据代理后，打印vm实例，如下图所示，vm实例上就有了配置项data里的所有key属性，以隐藏属性形式存在。
+
+![proxy](https://user-images.githubusercontent.com/20060839/114258316-63c92d80-99f8-11eb-83c9-316881d07316.png)
+
+
+
+

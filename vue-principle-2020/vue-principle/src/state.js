@@ -4,6 +4,7 @@
  */
 
 import { observe } from "./observer/index";
+import { proxy } from "./util";
 
 export function initState(vm) {
   const opts = vm.$options;
@@ -34,6 +35,13 @@ const initData = (vm) => {
   data = typeof data === 'function' ? data.call(vm) : data;
   // 将data放到实例vm上外部可以通过vm._data访问到数据
   vm._data = data;
+
+  // 数据代理
+  for (let key in data) {
+    // 当通过vm.key取值时，就去vm._data.key上取值
+    proxy(vm, '_data', key);
+  }
+
   /**
    * 数据的劫持方案：
    * 1.对象 Object.defineProperty

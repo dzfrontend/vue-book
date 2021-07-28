@@ -7,8 +7,16 @@
   <title>Document</title>
 </head>
 <body>
+  <div id="app">
+    <div class="ast">
+      {{name}}
+      <span>word</span>
+    </div>
+  </div>
   <script src="dist/umd/vue.js"></script>
+  <!-- Vue响应式原理 -->
   <script>
+    /*
     // console.log(Vue);
     const vm = new Vue({
       el: '#app',
@@ -26,6 +34,22 @@
     // vm._data.arrObj[0].a = 2;
     // vm._data.arrObj.push({ b: 2 });
     console.log(vm);
+    */
+  </script>
+  <!-- 模板编译 -->
+  <script>
+    const vm = new Vue({
+      el: '#app',
+      data() {
+        return {
+          name: '模板编译'
+        }
+      },
+      // render(h) {
+      //   return h('div', { id: 'a'}, hello);
+      // },
+      // template: '<div id="a">hello</div>'
+    });
   </script>
 </body>
 </html>

@@ -497,6 +497,74 @@ const proxy = (vm, data, key) => {
 
 ![proxy](https://user-images.githubusercontent.com/20060839/114258316-63c92d80-99f8-11eb-83c9-316881d07316.png)
 
+# 三.模板编译
 
+### 3.1 html编译成ast语法树
+
+vue中的渲染逻辑是默认先会找配置项中的render方法进行渲染，没有传入render方法会查找template渲染，没有template最后才会找当前el指定元素中的内容进行渲染。
+
+```js
+const vm = new Vue({
+  el: '#app',
+  render(h) {
+    return h('div', { id: 'a'}, hello);
+  },
+  // template: '<div id="a">hello</div>'
+});
+```
+
+上面的template等价于render函数，其实也就是template里面的模板内容最终是转换成render函数里面的内容；这一过程就需要用到ast解析template成为ast语法树，最后转换成render函数。
+
+初始化init.js中，在Vue原型上扩展$mount挂载方法，里面写上vue的渲染逻辑：(src/init.js)
+
+```js
+import { compileToFunctions } from "./compiler/index";
+
+export function initMixin(Vue) {
+  Vue.prototype._init = function (options) {
+    const vm = this;
+    ...
+
+    // 模板编译
+    if (vm.$options.el) {
+      vm.$mount(vm.$options.el);
+    }
+  }
+  // 挂载
+  Vue.prototype.$mount = function (el) {
+    const vm = this;
+    const options = vm.$options;
+    el = document.querySelector(el);
+
+    if (!options.render) {
+      // 配置项无render取template
+      let template = options.template;
+      if (!template && el) {
+        // 无template有el，取el里html内容
+        template = el.outerHTML;
+      }
+      // 将模板编译成render函数
+      const render = compileToFunctions(template);
+      options.render = render;
+    }
+  }
+}
+```
+
+接着需要将html模板编译成render函数，如何将html模板编译成render函数呢？这个时候就需要描述html结构，再将描述的html结构转换成js语法生成render函数。这样一种<b>描述html结构的方式就是ast语法树</b>。(src/compiler/index.js)
+
+将html编译成ast语法树的过程在src/compiler/index.js路径文件里面，主要用正则解析html，用栈创建元素的父子关系形成ast语法树，这里不做过多阐述。
+
+``` html
+<div id="app">
+  <div class="ast">
+    {{name}}
+    <span>word</span>
+  </div>
+</div>
+```
+上面一段template模板转成ast语法树的结构如下：
+
+![ast](https://user-images.githubusercontent.com/20060839/127302557-b1ae920a-c3dc-447c-9c81-3cecb9448959.png)
 
 

@@ -1,4 +1,6 @@
 import { initMixin } from "./init";
+import { lifecycleMixin } from "./lifecycle";
+import { renderMixin } from "./vdom/index.js";
 
 // Vue类用构造函数写法
 function Vue(options) {
@@ -11,5 +13,7 @@ function Vue(options) {
 // Vue.prototype._init = function (options) {
 // }
 initMixin(Vue);
+lifecycleMixin(Vue); // 混合生命周期
+renderMixin(Vue);
 
 export default Vue;

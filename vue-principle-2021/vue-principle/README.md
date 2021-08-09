@@ -556,31 +556,18 @@ export function initMixin(Vue) {
 将html编译成ast语法树的过程在src/compiler/parse.js路径文件里面，主要用正则解析html，用栈创建元素的父子关系形成ast语法树，这里不做过多阐述。
 
 ``` html
-<div id="app">
-  <div class="ast">
-    {{name}}
-    <span>word</span>
-  </div>
-</div>
+<div id="app" style="color:red;font-size:12px;">hello {{ name }} <span>word</span></div>
 ```
 上面一段template模板转成ast语法树的结构如下：
 
-![ast](https://user-images.githubusercontent.com/20060839/127302557-b1ae920a-c3dc-447c-9c81-3cecb9448959.png)
+![ast](https://user-images.githubusercontent.com/20060839/128676391-7126f796-3812-461f-953c-f55a8cd77639.png)
 
 
 ### 3.2 ast语法树转换成render函数形式
 
 在上面的ast语法树中，想要渲染到页面，需要转成render函数的形式。
 
-例如有一段html模板为：
-
-```html
-<div id="app" style="color:red;font-size:12px;">
-hello {{ name }} <span>word</span>
-</div>
-```
-
-html编译成ast语法树后，转成render函数如下形式：
+例如将上面一段html编译成ast语法树后，接着需要转成render的函数为如下形式：
 
 ```js
 render() {
@@ -674,3 +661,97 @@ function genChild(node) {
 ```js
 _c('div', {id:"app",style:{"color":"red","font-size":"12px"}}, _v("hello"+_s(name)),_c('span', undefined, _v("word")))
 ```
+
+在compileToFunctions函数中(src/compiler/index.js)，将render函数字符串转成render函数并返回该函数。
+
+```js
+export function compileToFunctions(template) {
+  ...
+  // 将render函数字符串转成render函数
+  let render = new Function(`with(this){ return ${code} }`);
+  return render;
+}
+```
+
+### 3.3 创建虚拟dom
+
+render函数生成后，需要渲染到页面上。渲染render函数，需要将render函数转换成虚拟节点，再将虚拟节点渲染到页面上，这个虚拟节点也就是我们常说的虚拟dom。
+
+在原型的挂载函数$mount中，新增render函数转为虚拟dom的_render方法调用：(src/init.js)
+
+```js
+Vue.prototype.$mount = function (el) {
+    const vm = this;
+    ...
+    if (!options.render) {
+      ...
+      const render = compileToFunctions(template);
+      options.render = render;
+    }
+
+    // 挂载组件
+    vm._render();
+  }
+```
+
+新建vdom/index.js：(src/vdom/index.js)
+
+新建renderMixin方法，并在入口文件src/index.js里调用`renderMixin(Vue)`，传入Vue。在Vue原型的_render方法里调用vm.$options.render函数，并且写好_c，_s，_v方法用于将render函数转成虚拟dom。
+
+```js
+export function renderMixin(Vue) {
+  Vue.prototype._render = function () {
+    const vm = this;
+    // 调用render函数
+    const render = vm.$options.render;
+    let vnode = render.call(vm);
+    console.log(vnode);
+    return vnode;
+  }
+  Vue.prototype._c = function () {
+    // 创建虚拟dom元素
+    return createElement(...arguments);
+  }
+  Vue.prototype._s = function (val) {
+    // stringify
+    return val == null ? '' : (typeof val == 'object') ? JSON.stringify(val) : val;
+  }
+  Vue.prototype._v = function (text) {
+    // 创建虚拟dom文本元素
+    return createTextVnode(text);
+  }
+}
+```
+接着写创建虚拟dom元素和虚拟dom文本元素的方法，它们都公用一个vnode方法，生成一样的用对象来描述的dom结构。
+
+```js
+function createElement(tag, data = {}, ...children) {
+  // console.log(arguments);
+  return vnode(tag, data, data.key, children);
+}
+
+function createTextVnode(text) {
+  // console.log(text);
+  return vnode(undefined, undefined, undefined, undefined, text);
+}
+
+// 生成虚拟dom
+function vnode(tag, data, key, children, text) {
+  return {
+    tag, 
+    data, 
+    key, 
+    children, 
+    text
+  }
+}
+```
+
+控制台打印虚拟dom的结构如下：
+
+![虚拟dom](https://user-images.githubusercontent.com/20060839/128677920-16a3c903-63b5-43d7-8e67-3ed58f4f423d.png)
+
+通过和上面3.1中ast语法树的结构对比发现，虚拟dom结构和ast语法树的结构类似。
+
+而虚拟dom和ast语法树的不同在于：<b>vdom用来描述dom对象，可以放一些自定义属性；ast转换的结果一定是根据html代码来的，不能新增一些不存在的属性。</b>
+

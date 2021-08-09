@@ -54,7 +54,7 @@ export function parseHTML(html) {
   // 文本匹配的结果
   function chars(text) {
     // console.log('文本匹配结果', text);
-    text = text.replace(/\s/g, '');
+    // text = text.replace(/\s/g, '');
     if (text) {
       currentElement.children.push({
         type: 3,

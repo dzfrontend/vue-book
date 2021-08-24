@@ -673,7 +673,9 @@ export function compileToFunctions(template) {
 }
 ```
 
-### 3.3 创建虚拟dom
+# 四.虚拟dom
+
+### 4.1 创建虚拟dom
 
 render函数生成后，需要渲染到页面上。渲染render函数，需要将render函数转换成虚拟节点，再将虚拟节点渲染到页面上，这个虚拟节点也就是我们常说的虚拟dom。
 
@@ -705,7 +707,6 @@ export function renderMixin(Vue) {
     // 调用render函数
     const render = vm.$options.render;
     let vnode = render.call(vm);
-    console.log(vnode);
     return vnode;
   }
   Vue.prototype._c = function () {
@@ -726,12 +727,10 @@ export function renderMixin(Vue) {
 
 ```js
 function createElement(tag, data = {}, ...children) {
-  // console.log(arguments);
   return vnode(tag, data, data.key, children);
 }
 
 function createTextVnode(text) {
-  // console.log(text);
   return vnode(undefined, undefined, undefined, undefined, text);
 }
 
@@ -755,3 +754,69 @@ function vnode(tag, data, key, children, text) {
 
 而虚拟dom和ast语法树的不同在于：<b>vdom用来描述dom对象，可以放一些自定义属性；ast转换的结果一定是根据html代码来的，不能新增一些不存在的属性。</b>
 
+### 4.2 渲染真实dom
+
+创建虚拟dom后，就可以生成真实dom渲染到页面中了。写一个patch方法用于渲染真实dom：
+
+```js
+import { patch } from "./vdom/patch";
+Vue.prototype.$mount = function (el) {
+  ...
+  el = document.querySelector(el);
+  vm.$el = el;
+  ...
+  const vnode = vm._render();
+  // 将虚拟节点转换成真实节点
+  patch(vm.$el, vnode);
+}
+```
+
+在patch方法中，createEle函数用于生成真实dom，生成真实dom后，在老节点后插入真实dom并删除这个老节点，这样就将真实dom渲染到页面中了。(src/vdom/patch.js)
+
+```js
+export function patch(oldVnode, vnode) {
+  let el = createEle(vnode); // 生成真实dom
+  let parentEle = oldVnode.parentNode; // body
+  parentEle.insertBefore(el, oldVnode.nextSibling); // 在oldVnode后插入真实dom
+  parentEle.removeChild(oldVnode); // 删除老节点
+}
+
+function createEle(vnode) {
+  let { tag, children, key, data, text } = vnode;
+  if (typeof tag === 'string') { // 元素节点
+    // 创建元素，放到vnode.el上
+    vnode.el = document.createElement(tag);
+    // 遍历子节点，将子节点递归渲染内容放到其父节点上
+    children.forEach(child => {
+      vnode.el.appendChild(createEle(child));
+    });
+  } else { // 文本节点
+    vnode.el = document.createTextNode(text);
+  }
+  return vnode.el;
+}
+```
+
+html如下：
+
+```html
+<div id="app">hello {{ name }} <span>word</span></div>
+<script>
+  const vm = new Vue({
+    el: '#app',
+    data() {
+      return {
+        name: '模板编译'
+      }
+    },
+  });
+</script>
+```
+
+渲染结果如下：
+
+```
+hello 模板编译 word
+```
+
+至此，一个简单的Vue页面渲染完成了。我们可以总结一下Vue的渲染流程：先初始化数据 => 模板编译 => 生成render函数 => 创建虚拟dom => 生成真实dom => 渲染页面。

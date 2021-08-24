@@ -8,7 +8,7 @@ export function renderMixin(Vue) {
     // 调用render函数
     const render = vm.$options.render;
     let vnode = render.call(vm);
-    console.log(vnode);
+    // console.log(vnode);
     return vnode;
   }
   Vue.prototype._c = function () {

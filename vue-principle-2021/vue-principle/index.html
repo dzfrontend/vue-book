@@ -33,6 +33,7 @@
   </script>
   <!-- 模板编译 -->
   <script>
+    /*
     const vm = new Vue({
       el: '#app',
       data() {
@@ -44,6 +45,31 @@
       //   return h('div', { id: 'a'}, hello);
       // },
       // template: '<div id="a">hello</div>'
+    });
+    */
+  </script>
+  <!-- 生命周期 -->
+  <script>
+    Vue.mixin({
+      created: function a() {
+        console.log('created')
+      },
+    })
+    Vue.mixin({
+      created: function b() {
+        console.log('created')
+      },
+    })
+    const vm = new Vue({
+      el: '#app',
+      data() {
+        return {
+          name: '生命周期'
+        }
+      },
+      created: function c() {
+        console.log('my created')
+      },
     });
   </script>
 </body>

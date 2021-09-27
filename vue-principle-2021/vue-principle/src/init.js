@@ -1,12 +1,17 @@
 import { initState } from "./state";
 import { compileToFunctions } from "./compiler/index";
 import { mountComponent } from "./lifecycle";
+import { mergeOptions } from "./util";
 
 export function initMixin(Vue) {
   Vue.prototype._init = function (options) {
     // 将配置项挂载到实例vm上：vm.$options就可以访问配置项
     const vm = this;
-    vm.$options = options;
+
+    // 将局部组件的options和全局options合并
+    vm.$options = mergeOptions(vm.constructor.options, options);
+    // vm.$options = options;
+
     // 初始化状态
     initState(vm);
 

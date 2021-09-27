@@ -1,5 +1,12 @@
 # 手写vue核心原理
 
+## 开始项目
+
+```Bash
+# 运行命令，浏览器打开localhost:3000查看结果
+npm run dev
+```
+
 ## 一.使用Rollup搭建开发环境
 
 ### 1.1 什么是Rollup?
@@ -451,7 +458,7 @@ class Observer {
 
 结果显示新push的对象已经被劫持了，当改变其值也就会被监听到。
 
-### 2.4 数据代理
+### 2.4 实现属性代理（数据代理）
 
 使用数据的时候，当前只能通过`vm._data.arrObj`取到实例中的数据，如何直接变成vm.arrObj的形式方便操作数据呢？这里就需要用到数据代理，当在vm上取属性时，将属性的取值代理到vm._data上。
 
@@ -673,7 +680,7 @@ export function compileToFunctions(template) {
 }
 ```
 
-# 四.虚拟dom
+# 四.虚拟dom实现原理
 
 ### 4.1 创建虚拟dom
 
@@ -820,3 +827,146 @@ hello 模板编译 word
 ```
 
 至此，一个简单的Vue页面渲染完成了。我们可以总结一下Vue的渲染流程：先初始化数据 => 模板编译 => 生成render函数 => 创建虚拟dom => 生成真实dom => 渲染页面。
+
+# 五.生命周期实现原理
+
+### 5.1 生命周期的合并之Vue.mixin实现原理
+
+在Vue中，经常会使用到mixin，那么mixin做了什么呢？其实mixin就是把生命周期、数据、方法等进行了一个合并操作，下面就以Vue.mixin为例，看看mixin的实现原理。
+
+先来写一个mixin的调用：
+
+```js
+<script>
+  Vue.mixin({
+    created: function a() {
+      console.log('created')
+    },
+  })
+  Vue.mixin({
+    created: function b() {
+      console.log('created')
+    },
+  })
+  const vm = new Vue({
+    el: '#app',
+    data() {
+      return {
+        name: '生命周期'
+      }
+    },
+    created: function c() {
+      console.log('my created')
+    },
+  });
+</script>
+```
+
+上面有两个全局组件Vue.mixin，里面是生命周期函数created，最后Vue.mixin会把created的两个函数a和b合并在一起；所以以生命周期的合并为起点，我们来看看Vue.mixin是怎么做到合并的。
+
+新增initGlobalApi方法，定义Vue.mixin全局方法，传入mixin：(src/global-api/index.js)
+
+```js
+import { mergeOptions } from "../util";
+
+export function initGlobalApi(Vue) {
+  // 初始化Vue的options属性为空对象
+  Vue.options = {};
+  // 混合混入方法mixin
+  Vue.mixin = function (mixin) {
+    this.options = mergeOptions(this.options, mixin);
+    console.log(this.options);
+  }
+}
+```
+入口文件调用该方法，传入Vue：(src/index.js)
+
+```js
+...
+initGlobalApi(Vue);
+...
+```
+
+新增合并mixin的方法mergeOptions：(src/util.js)
+
+```js
+const mergeOptions = (parent, child) => {
+  const options = {};
+
+  // 合并parent和child的key
+  for(let key in parent) {
+    mergeField(key);
+  }
+
+  // 处理child的key
+  for (let key in child) {
+    if (!parent.hasOwnProperty(key)) {
+      mergeField(key);
+    }
+  }
+
+  // key合并
+  function mergeField(key) {
+    if (strats[key]) {
+      // 根据key用不同的策略进行合并
+      options[key] = strats[key](parent[key], child[key]);
+    } else {
+      // 默认合并
+      options[key] = child[key];
+    }
+  }
+
+  return options;
+}
+```
+
+在mergeOptions方法中，对传入`mergeOptions(this.options, mixin)`两个参数进行遍历，然后根据key用不同的策略进行合并。
+
+新增策略对象strats来处理不同的key，这里的key有生命周期函数，data，methods等值，这里只针对生命周期进行合并：(src/util.js)
+
+```js
+// 策略对象
+const strats = {};
+// 简单处理数据的合并
+strats.data = function (parentVal, childVal) {
+  return childVal;
+}
+
+// 生命周期的合并
+const mergeHook = (parentVal, childVal) => {
+  if (childVal) {
+    if (parentVal) {
+      // 数组合并
+      return parentVal.concat(childVal);
+    } else {
+      // 第一次parentVal为空，只会进这里，将childVal转换为数组
+      return [childVal];
+    }
+  } else {
+    return parentVal;
+  }
+};
+
+const LIFECICLE_HOOKS = ['beforeCreate', 'created', 'beforMount', 'mounted', 'beforeUpdate', 'updated', 'beforeDestory', 'destroyed'];
+LIFECICLE_HOOKS.forEach(hook => {
+  // 这里用策略模式，每一个生命周期钩子函数用相同的mergeHook方法策略
+  strats[hook] = mergeHook;
+});
+```
+
+遍历LIFECICLE_HOOKS，给每一个生命周期钩子函数定义相同的mergeHook方法；而在mergeHook中，对生命周期的值先进行了一个数组的转换，然后进行数组的合并。
+
+回到initGlobalApi中，查看this.options的输出，结果显示两个created生命周期钩子合并成一个[a, b]的形式了。
+
+![mergeHook](https://user-images.githubusercontent.com/20060839/134856705-ad20a8eb-5309-4b23-873c-27b38fcfa275.png)
+
+接下来，同样的在new Vue里传入的created生命周期，需要将局部组件的生命周期和全局Vue.mixin的生命周期合并，并且同样用到mergeOptions合并方法：(src/init.js)
+
+```js
+// 将局部组件的options和全局options合并
+vm.$options = mergeOptions(vm.constructor.options, options);
+// vm.$options = options; // 旧版不用合并
+```
+打印vm.$options，结果显示created生命周期的全局组件a, b方法和局部组件的c方法都进行合并了。
+
+![mergeHook](https://user-images.githubusercontent.com/20060839/134857821-6e04b3f7-fd6f-43e5-8b05-f3c84098e108.png)

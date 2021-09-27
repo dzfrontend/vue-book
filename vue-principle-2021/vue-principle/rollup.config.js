@@ -18,7 +18,7 @@ export default {
     }),
     // 配置的服务器
     serve({
-      port: 3002,
+      port: 3000,
       contentBase: '',
       openPage: '/index.html'
     })

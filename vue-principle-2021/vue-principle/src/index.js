@@ -1,6 +1,7 @@
 import { initMixin } from "./init";
 import { lifecycleMixin } from "./lifecycle";
 import { renderMixin } from "./vdom/index.js";
+import { initGlobalApi } from "./global-api/index.js";
 
 // Vue类用构造函数写法
 function Vue(options) {
@@ -9,11 +10,11 @@ function Vue(options) {
 }
 
 // 原型方法写成插件的形式便于模块化
-// 初始化options配置项
-// Vue.prototype._init = function (options) {
-// }
 initMixin(Vue);
 lifecycleMixin(Vue); // 混合生命周期
 renderMixin(Vue);
+
+// Vue的静态方法：Vue.mixin
+initGlobalApi(Vue);
 
 export default Vue;

@@ -1,6 +1,6 @@
 import { initState } from "./state";
 import { compileToFunctions } from "./compiler/index";
-import { mountComponent } from "./lifecycle";
+import { callHook, mountComponent } from "./lifecycle";
 import { mergeOptions } from "./util";
 
 export function initMixin(Vue) {
@@ -12,8 +12,10 @@ export function initMixin(Vue) {
     vm.$options = mergeOptions(vm.constructor.options, options);
     // vm.$options = options;
 
+    callHook(vm, 'beforeCreate');
     // 初始化状态
     initState(vm);
+    callHook(vm, 'created');
 
     // 模板编译
     if (vm.$options.el) {

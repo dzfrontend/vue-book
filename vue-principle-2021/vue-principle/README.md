@@ -840,12 +840,12 @@ hello 模板编译 word
 <script>
   Vue.mixin({
     created: function a() {
-      console.log('created')
+      console.log('created a')
     },
   })
   Vue.mixin({
     created: function b() {
-      console.log('created')
+      console.log('created b')
     },
   })
   const vm = new Vue({
@@ -970,3 +970,48 @@ vm.$options = mergeOptions(vm.constructor.options, options);
 打印vm.$options，结果显示created生命周期的全局组件a, b方法和局部组件的c方法都进行合并了。
 
 ![mergeHook](https://user-images.githubusercontent.com/20060839/134857821-6e04b3f7-fd6f-43e5-8b05-f3c84098e108.png)
+
+### 5.2 生命周期的调用(实现)
+
+在合并生命周期后，需要调用生命周期，新增一个调用生命周期函数的公用方法callHook：(src/lifecycle.js)
+
+```js
+export function callHook(vm, hook) {
+  const handlers = vm.$options[hook]; // vm.$options.created = [a, b, c]
+  if (handlers) {
+    for (let i = 0; i < handlers.length; i++) {
+      handlers[i].call(vm);
+    }
+  }
+}
+```
+
+在callHook中，由于生命周期函数已经合并到了`vm.$options`中，只用遍历`vm.$options`相关的生命周期函数，最后调用就可以了。
+
+在初始化状态前，调用`beforeCreate`；初始化状态后，调用`created`：(src/init.js)
+
+```js
+Vue.prototype._init = function (options) {
+  ...
+  callHook(vm, 'beforeCreate');
+  // 初始化状态
+  initState(vm);
+  callHook(vm, 'created');
+  ...
+}
+```
+
+在页面挂载之前，调用`beforMount`；挂载之后，调用`mounted`：(src/lifecycle.js)
+
+```js
+export function mountComponent(vm, el) {
+  callHook(vm, 'beforMount');
+  // 将render函数转换成虚拟dom
+  const vnode = vm._render();
+  // 再将虚拟dom挂载到页面上
+  vm._update(vnode);
+  callHook(vm, 'mounted');
+}
+```
+
+这样就基本实现了vue的生命周期调用，其他钩子函数'beforeUpdate', 'updated', 'beforeDestory', 'destroyed'后面再做讨论。

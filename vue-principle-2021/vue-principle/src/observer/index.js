@@ -1,4 +1,5 @@
 import { arrayMethods } from "./array";
+import Dep from "./dep";
 
 /**
  * 数据响应式原理处理
@@ -42,16 +43,26 @@ class Observer {
 
 const defineReactive = (data, key, value) => {
   observe(value); // value有可能是对象，如果是对象就递归遍历深拷贝层的key属性进行重新定义
+
+  // 每个数据属性都有一个Dep
+  let dep = new Dep();
+  
   Object.defineProperty(data, key, {
     get() {
       console.log('get');
+      // 当页面取值，说明这个值用来渲染了，将这个watcher和这个数据属性对应起来
+      if (Dep.target) {
+        // 让这个数据属性记住这个watcher
+        dep.depend();
+      }
       return value;
     },
     set(newValue) {
       console.log('set');
-      if (newValue !== value) return;
+      if (newValue === value) return;
       observe(newValue); // 用户将值设置成对象继续监控
       value = newValue;
+      dep.notify();
     }
   })
 }

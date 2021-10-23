@@ -7,6 +7,7 @@ export function patch(oldVnode, vnode) {
   let parentEle = oldVnode.parentNode; // body
   parentEle.insertBefore(el, oldVnode.nextSibling); // 在oldVnode后插入真实dom
   parentEle.removeChild(oldVnode); // 删除老节点
+  return el;
 }
 
 // 生成真实dom

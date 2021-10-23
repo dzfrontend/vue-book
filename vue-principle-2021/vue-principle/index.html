@@ -50,6 +50,7 @@
   </script>
   <!-- 生命周期 -->
   <script>
+    /*
     Vue.mixin({
       created: function a() {
         console.log('created a')
@@ -74,6 +75,23 @@
         console.log('my mounted')
       },
     });
+    */
+  </script>
+  <!-- 数据依赖更新 -->
+  <script>
+    const vm = new Vue({
+      el: '#app',
+      data() {
+        return {
+          name: 'a'
+        }
+      },
+    });
+    // 改变数据页面不会更新，需要重新调用_update
+    setTimeout(() => {
+      vm.name = 'b';
+      // vm._update(vm._render());
+    }, 3000);
   </script>
 </body>
 </html>

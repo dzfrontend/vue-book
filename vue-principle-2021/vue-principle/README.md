@@ -1015,3 +1015,186 @@ export function mountComponent(vm, el) {
 ```
 
 这样就基本实现了vue的生命周期调用，其他钩子函数'beforeUpdate', 'updated', 'beforeDestory', 'destroyed'后面再做讨论。
+
+# 六.数据依赖更新原理
+
+### 6.1 依赖收集和依赖更新
+
+在vue中，更新数据，对应的页面视图更新；那么更新数据，如何通知页面更新呢？最原始的实现，在上面章节虚拟dom实现原理已经实现，也就是重新调用`_render`函数转成虚拟dom(此时数据会更新)，再调用`_update`更新页面，视图就会更新。
+
+例如下面示例中，改变name的值，手动调用_render和_update，3s计时后视图会跟着更新。
+
+```js
+const vm = new Vue({
+  el: '#app',
+  data() {
+    return {
+      name: 'a'
+    }
+  },
+});
+// 改变数据页面不会更新，需要重新调用_render和_update
+setTimeout(() => {
+  vm.name = 'b';
+  vm._update(vm._render());
+}, 3000);
+```
+
+那么在实际应用中，不可能每次数据发生变化，都需要手动调用_render和_update；所以要想实现数据的依赖更新，当数据变化，自动调用_render和_update就可以了。
+
+在vue中，这种自动更新策略是以组件为单位的，给每个组件都增加了一个watcher，数据变化后重新调用这个watcher。
+
+那么新建一个watcher：(src/observer/watcher.js)
+
+```js
+let id = 0; // 更新策略是以组件为单位，这个id是组件watcher的唯一标识
+class Watcher {
+  constructor(vm, fn, cb) {
+    this.vm = vm;
+    this.fn = fn;
+    this.cb = cb;
+    this.id = id++;
+
+    if(typeof fn === 'function') {
+      this.getter = fn;
+    }
+    this.get();
+  }
+  get() {
+    this.getter();
+  }
+}
+
+export default Watcher;
+```
+
+其中fn传入的是渲染函数vm._update(vm._render())，将mountComponent函数改写成watcher来渲染，并且回调函数传入beforeUpdate生命周期函数：(src/lifecycle.js)
+
+```js
+export function mountComponent(vm, el) {
+  callHook(vm, 'beforMount');
+
+  // vm._update(vm._render());
+  // 改写成watcher来渲染
+  let updateComponent = () => {
+    vm._update(vm._render());
+  };
+  new Watcher(vm, updateComponent, () => {
+    callHook(vm, 'beforeUpdate');
+  }, true);
+
+  callHook(vm, 'mounted');
+}
+```
+
+我们发现组件挂载mountComponent里面new了一个Watcher实例，所以一个组件对应一个Watcher来渲染，当数据发生更新的时候，需要这个Watcher实例的get方法来渲染更新。
+
+那么如何做到数据依赖更新呢，就需要把<b>数据属性和Wathcer绑定在一起</b>。一个组件中有很多个数据属性，多个属性都需要绑定Wathcer，如何绑定呢？这个时候就需要<b>一个Dep类来表示这一个个数据属性和Watcher的对应关系，这种依赖关系就是Vue中的依赖收集</b>。
+
+新建dep.js，先定义一个全局的Dep.target来用于存放Watcher：(src/observer/dep.js)
+
+```js
+// Dep为全局变量
+Dep.target = null;
+export function pushTarget(watcher) {
+  Dep.target = watcher;
+}
+export function popTarget() {
+  Dep.target = null;
+}
+```
+
+在mountComponent渲染watcher的时候，取数据的值前添加Watcher实例，取数据的值后删掉Watcher实例，这里取数据的值也就是调用vm._render()的时候，这样就将当前组件Watcher的实例放到了Dep.target上了。
+
+```js
+class Watcher {
+  ...
+  get() {
+    // this为当前Watcher实例
+    // 取数据的值前添加Watcher实例
+    pushTarget(this);
+    this.getter();
+    // 取数据的值后删掉Watcher实例
+    popTarget();
+  }
+  ...
+}
+```
+
+上面说到的取数据的值，也就是调用vm._render()的时候，只要一取值都会走Vue响应式数据原理中defineProperty的get方法，所以我们可以此时将数据属性和Watcher实例关联起来。
+
+在响应式defineReactive方法中，在定义数据属性的时候调用Dep类，这样每个数据都有一个Dep实例，这个Dep用来收集Watcher依赖和更新依赖：(src/observer/index.js)
+
+```js
+import Dep from "./dep";
+const defineReactive = (data, key, value) => {
+  observe(value);
+
+  // 每个数据属性都有一个Dep
+  let dep = new Dep();
+  
+  Object.defineProperty(data, key, {
+    get() {
+      // 当页面取值，将这个watcher和这个数据属性对应起来
+      if (Dep.target) {
+        // 让这个数据属性记住这个watcher
+        dep.depend();
+      }
+      return value;
+    },
+    set(newValue) {
+      if (newValue === value) return;
+      observe(newValue);
+      value = newValue;
+      dep.notify();
+    }
+  })
+}
+```
+
+判断Dep.target有值的时候，也就是在初始化渲染Watcher或更新的时候，将Watcher的实例在Dep类中用depend方法收集依赖（例如vm.name取值也会走defineProperty的get方法，但是不是渲染Watcher，就不会进行Watcher的依赖收集；这也是为什么前面取数据的值前添加Watcher实例的原因了）；当数据更新的时候，用notify方法更新收集的依赖。
+
+在Dep类中实现Watcher的依赖收集和依赖更新：(src/observer/dep.js)
+
+```js
+class Dep {
+  constructor() {
+    this.subs = [];
+  }
+  // watcher实例依赖收集
+  depend() {
+    this.subs.push(Dep.target);
+  }
+  // 依赖更新
+  notify() {
+    this.subs.forEach(watcher => watcher.get());
+  }
+}
+export default Dep;
+```
+
+在上面的依赖更新notify方法中，遍历Watcher实例的get方法来渲染更新，这样就做到了数据发生变化，页面渲染更新了。
+
+改变数据name的值，不用在改变数据后再手动调用`vm._update(vm._render())`了。
+
+```js
+<script>
+  const vm = new Vue({
+    el: '#app',
+    data() {
+      return {
+        name: 'a'
+      }
+    },
+  });
+  setTimeout(() => {
+    vm.name = 'b';
+  }, 3000);
+</script>
+```
+
+运行项目，页面在3s后更新。
+
+![GIF 2021-10-23 12-04-24](https://user-images.githubusercontent.com/20060839/138542456-25bdc946-1344-4674-936f-e17b659ae4c9.gif)
+
+

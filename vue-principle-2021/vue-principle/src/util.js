@@ -5,7 +5,7 @@ const proxy = (vm, data, key) => {
       return vm[data][key];
     },
     set(newValue) {
-      vm[data].key = newValue;
+      vm[data][key] = newValue;
     }
   });
 }

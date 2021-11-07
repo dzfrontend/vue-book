@@ -1,4 +1,5 @@
 import { popTarget, pushTarget } from "./dep";
+import { nextTick } from "../util";
 
 /**
  * 数据依赖更新原理
@@ -28,7 +29,34 @@ class Watcher {
   }
   update() {
     // 重新渲染
-    this.get();
+    // this.get();
+    // 改为缓存watcher
+    queueWatcher(this);
+  }
+}
+
+let queue = []; // 缓存队列queue：将需要批量更新的watcher，去重存到队列中缓存起来
+let has = {};
+let pending = false; // 批处理（也就是防抖）
+
+function flushSchedulerQueue() {
+  queue.forEach(watcher => { watcher.get(); watcher.cb(); });
+  queue = []; // 清空队列
+  has = {};
+  pending = false;
+}
+
+function queueWatcher(watcher) {
+  const id = watcher.id;
+  if (!has[id]) {
+    queue.push(watcher);
+    has[id] = true;
+  }
+  if (!pending) {
+    // 等待所有的同步代码执行完毕后再执行
+    nextTick(flushSchedulerQueue);
+    // pending：只跑一次定时器，如果还没清空缓存队列，就不要再开定时器了
+    pending = true;
   }
 }
 

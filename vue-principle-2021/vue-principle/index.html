@@ -7,7 +7,11 @@
   <title>Document</title>
 </head>
 <body>
-  <div id="app" style="color:red;font-size:12px;">hello {{ name }} <span>word</span></div>
+  <!-- <div id="app" style="color:red;font-size:12px;">hello {{ name }} <span>word</span></div> -->
+  <div id="app" style="color:red;font-size:12px;">
+    hello {{ name }} {{ age }}
+    <span>word</span>
+  </div>
   <script src="dist/umd/vue.js"></script>
   <!-- Vue响应式原理 -->
   <script>
@@ -79,6 +83,7 @@
   </script>
   <!-- 数据依赖更新 -->
   <script>
+    /*
     const vm = new Vue({
       el: '#app',
       data() {
@@ -91,6 +96,32 @@
     setTimeout(() => {
       vm.name = 'b';
       // vm._update(vm._render());
+    }, 3000);
+    */
+  </script>
+  <!-- nextTick实现 -->
+  <script>
+    const vm = new Vue({
+      el: '#app',
+      data() {
+        return {
+          name: 'a',
+          age: 20
+        }
+      },
+      updated() {
+        console.log('生命周期updated');
+      }
+    });
+    setTimeout(() => {
+      // 更新下面2个数据的时候，会调用2次渲染watcher，但是其实只用调用一次watcher渲染，这个时候就需要批处理
+      vm.name = 'b';
+      vm.age = 21;
+      console.log(vm.$el.innerHTML);
+      vm.$nextTick(() => {
+        // 更新数据后的dom
+        console.log(vm.$el.innerHTML);
+      })
     }, 3000);
   </script>
 </body>

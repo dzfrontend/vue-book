@@ -1068,7 +1068,7 @@ class Watcher {
 export default Watcher;
 ```
 
-其中fn传入的是渲染函数vm._update(vm._render())，将mountComponent函数改写成watcher来渲染，并且回调函数传入beforeUpdate生命周期函数：(src/lifecycle.js)
+其中fn传入的是渲染函数vm._update(vm._render())，将mountComponent函数改写成watcher来渲染，并且回调函数传入updated生命周期函数：(src/lifecycle.js)
 
 ```js
 export function mountComponent(vm, el) {
@@ -1080,8 +1080,8 @@ export function mountComponent(vm, el) {
     vm._update(vm._render());
   };
   new Watcher(vm, updateComponent, () => {
-    callHook(vm, 'beforeUpdate');
-  }, true);
+    callHook(vm, 'updated');
+  });
 
   callHook(vm, 'mounted');
 }
@@ -1197,4 +1197,145 @@ export default Dep;
 
 ![GIF 2021-10-23 12-04-24](https://user-images.githubusercontent.com/20060839/138542456-25bdc946-1344-4674-936f-e17b659ae4c9.gif)
 
+### 6.2 nextTick实现原理
 
+在实现数据的依赖更新后，如果一个组件有多个数据属性，当一次更新这多个数据属性，就会多次触发defineProperty的set方法，紧接着就会多次触发依赖更新。
+
+例如更新下面2个数据的时候，会调用2次渲染watcher，但是其实只用调用一次相同的watcher来重新渲染；当数据更新越多，重复渲染的次数也就越多。
+
+```js
+setTimeout(() => {    
+  vm.name = 'b';
+  vm.age = 21;
+}, 3000);
+```
+
+如何解决这个问题呢？我们只需要在watcher更新的时候，将watcher去重缓存起来，等数据更新完后再批处理。
+
+在Watcher的重新渲染更新中，新建一个queueWatcher的方法：(src/observer/watcher.js)
+
+```js
+class Watcher {
+  ...
+  update() {
+    // this.get();
+    // 改为缓存watcher
+    queueWatcher(this);
+  }
+  ...
+}
+
+let queue = []; // 缓存队列queue：将需要批量更新的watcher，去重存到队列中缓存起来
+let has = {};
+let pending = false; // 批处理（也就是防抖）
+
+function queueWatcher(watcher) {
+  const id = watcher.id;
+  if (!has[id]) {
+    queue.push(watcher);
+    has[id] = true;
+  }
+  if (!pending) {
+    // 等待所有的同步代码执行完毕后再执行
+    setTimeout(() => {
+      queue.forEach(watcher => watcher.get());
+      queue = []; // 清空队列
+      has = {};
+      pending = false;
+    },0);
+    // pending：只跑一次定时器，如果还没清空缓存队列，就不要再开定时器了
+    pending = true;
+  }
+}
+```
+
+queueWatcher方法主要对所有的watcher实例根据wathcer的id进行了去重暂存缓存，这里的暂存指的是运用计时器或其他异步任务等待所有的同步代码执行完毕后（例如所有的数据更新操作）再执行，这样同一个watcher实例就不会重复执行重新渲染方法了。
+
+同样我们想到了平时在Vue中用的nextTick方法，是等待DOM渲染更新之后执行延迟回调，这和我们上面缓存队列queue等待所有数据更新之后，延迟执行渲染更新如出一辙。
+
+所以我们将上面的异步任务封装成nextTick方法如下：(src/utils.js)
+
+```js
+let callbacks = [];
+let pending = false;
+function flushCallbacks() {
+  while (callbacks.length) {
+    // 批处理所有的cb
+    let cb = callbacks.shift();
+    cb();
+  }
+  pending = false;
+} 
+
+// 异步方法，做了兼容处理
+const timerFunc = () => {
+  // 异步方法里：等待所有的nextTick的cb push到callbacks里，批处理所有的cb
+  if (Promise) { // 浏览器支持Promise，使用异步方法Promise.resolve.then
+    Promise.resolve().then(flushCallbacks);
+  } else if (setImmediate) {
+    setImmediate(flushCallbacks);
+  } else {
+    setTimeout(flushCallbacks, 0);
+  }
+}
+
+const nextTick = (cb) => {
+  callbacks.push(cb);
+  if (!pending) {
+    // 页面中n次调用nextTick方法，callbacks里push回调cb函数n次，pending这里防抖处理，只用执行一次异步方法timerFunc
+    timerFunc();
+    pending = true;
+  }
+}
+```
+nextTick方法也会被调用多次传入回调函数，所有的回调函数需要放在异步函数里面执行，所以nextTick用到了异步函数+批处理。
+
+将Watcher里面的异步任务改写为nextTick：
+
+```js
+let queue = [];
+let has = {};
+let pending = false;
+
+function flushSchedulerQueue() {
+  queue.forEach(watcher => watcher.get());
+  queue = [];
+  has = {};
+  pending = false;
+}
+
+function queueWatcher(watcher) {
+  const id = watcher.id;
+  if (!has[id]) {
+    queue.push(watcher);
+    has[id] = true;
+  }
+  if (!pending) {
+    // 等待所有的同步代码执行完毕后再执行
+    nextTick(flushSchedulerQueue);
+    pending = true;
+  }
+}
+```
+
+把nextTick暴漏给Vue组件使用：
+
+```js
+Vue.prototype.$nextTick = function (cb) {
+  nextTick(cb);
+}
+```
+
+在组件中更新数据之后，就可以用nextTick拿到更新后的dom了：
+
+```js
+setTimeout(() => {
+  vm.name = 'b';
+  vm.age = 21;
+  console.log(vm.$el.innerHTML);
+  vm.$nextTick(() => {
+    // 更新数据后的dom
+    console.log(vm.$el.innerHTML);
+  })
+}, 3000);
+```

@@ -67,4 +67,41 @@ const mergeOptions = (parent, child) => {
   return options;
 }
 
-export { proxy, mergeOptions };
+/**
+ * nextTick实现原理
+ */
+let callbacks = [];
+let pending = false;
+function flushCallbacks() {
+  // callbacks.forEach(cb => cb());
+  // callbacks = [];
+  while (callbacks.length) {
+    // 批处理所有的cb
+    let cb = callbacks.shift();
+    cb();
+  }
+  pending = false;
+} 
+
+// 异步方法，做了兼容处理
+const timerFunc = () => {
+  // 异步方法里：等待所有的nextTick的cb push到callbacks里，批处理所有的cb
+  if (Promise) { // 浏览器支持Promise，使用异步方法Promise.resolve.then
+    Promise.resolve().then(flushCallbacks);
+  } else if (setImmediate) { // setImmediate也是异步方法，性能比setTimeout好
+    setImmediate(flushCallbacks);
+  } else {
+    setTimeout(flushCallbacks, 0);
+  }
+}
+
+const nextTick = (cb) => {
+  callbacks.push(cb);
+  if (!pending) {
+    // 页面中n次调用nextTick方法，callbacks里push回调cb函数n次，pending这里防抖处理，只用执行一次异步方法timerFunc
+    timerFunc();
+    pending = true;
+  }
+}
+
+export { proxy, mergeOptions, nextTick };

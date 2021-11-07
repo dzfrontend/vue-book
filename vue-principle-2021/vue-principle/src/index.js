@@ -2,6 +2,7 @@ import { initMixin } from "./init";
 import { lifecycleMixin } from "./lifecycle";
 import { renderMixin } from "./vdom/index.js";
 import { initGlobalApi } from "./global-api/index.js";
+import { stateMixin } from "./state";
 
 // Vue类用构造函数写法
 function Vue(options) {
@@ -13,6 +14,7 @@ function Vue(options) {
 initMixin(Vue);
 lifecycleMixin(Vue); // 混合生命周期
 renderMixin(Vue);
+stateMixin(Vue);
 
 // Vue的静态方法：Vue.mixin
 initGlobalApi(Vue);

@@ -13,10 +13,12 @@ npm run dev
 
 * [2.Vue响应式原理](./2.Vue响应式原理.md)
 
-* [3.模板编译](./3.模板编译.md)
+* [3.模板编译与ast语法](./3.模板编译与ast语法.md)
 
 * [4.虚拟dom实现原理](./4.虚拟dom实现原理.md)
 
 * [5.生命周期实现原理](./5.生命周期实现原理.md)
 
 * [6.数据依赖更新和nextTick实现原理](./6.数据依赖更新和nextTick实现原理.md)
+
+* [7.virtual-dom的diff原理](./7.virtual-dom的diff原理.md)

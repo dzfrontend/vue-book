@@ -3,6 +3,7 @@ import { lifecycleMixin } from "./lifecycle";
 import { renderMixin } from "./vdom/index.js";
 import { initGlobalApi } from "./global-api/index.js";
 import { stateMixin } from "./state";
+import { domDiffTest } from "./dom-diff-demo.js";
 
 // Vue类用构造函数写法
 function Vue(options) {
@@ -18,5 +19,7 @@ stateMixin(Vue);
 
 // Vue的静态方法：Vue.mixin
 initGlobalApi(Vue);
+
+domDiffTest(Vue);
 
 export default Vue;

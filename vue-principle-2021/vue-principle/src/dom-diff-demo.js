@@ -7,7 +7,12 @@ import { createElm, patch } from "./vdom/patch.js";
 const domDiffTest = (Vue) => {
 
   // 老的vdom
-  let oldTemplate = `<div a="1" style="color: red;">{{ message }}</div>`;
+  let oldTemplate = `<div a="1" style="color: red;">
+    <li key="A">A</li>
+    <li key="B">B</li>
+    <li key="C">C</li>
+    <li key="D">D</li>
+  </div>`;
 
   let vm1 = new Vue({ data: { message: 'hello world'} });
 
@@ -16,7 +21,11 @@ const domDiffTest = (Vue) => {
   document.body.appendChild(createElm(oldVnode));
 
   // 新的vdom
-  let newTemplate = `<div style="color:blue;">{{ message }}</div>`;
+  let newTemplate = `<div style="color:blue;">
+    <li key="A">A</li>
+    <li key="B">B</li>
+    <li key="C">C</li>
+  </div>`;
 
   let vm2 = new Vue({ data: { message: 'hello world update'} });
 
